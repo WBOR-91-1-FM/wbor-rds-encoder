@@ -37,7 +37,7 @@ Responsible for dynamically updating the RDS (Radio Data System) [RT (RadioText)
   - The two commands we care about during regular operation of this app are `TEXT` AND `RT+TAG`.
 
 - The final response line from SmartGen will return:
-  - `YES` if the command was successful.
+  - `OK` if the command was successful.
   - `NO` if it failed.
 - **Character limit:** 64 characters for `TEXT=` messages.
 
