@@ -9,19 +9,51 @@ import aio_pika
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.DEBUG)
 
-RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "localhost")
-RABBITMQ_USER = os.getenv("RABBITMQ_USER", "guest")
-RABBITMQ_PASS = os.getenv("RABBITMQ_PASS", "guest")
+RABBITMQ_HOST = os.getenv("RABBITMQ_HOST")
+RABBITMQ_USER = os.getenv("RABBITMQ_USER")
+RABBITMQ_PASS = os.getenv("RABBITMQ_PASS")
 
 # Consuming from this queue
-RABBITMQ_QUEUE = os.getenv("RABBITMQ_QUEUE", "now_playing")
+RABBITMQ_QUEUE = os.getenv("RABBITMQ_QUEUE")
 
 # Publishing to this exchange (optional, for a "preview" feature)
-PREVIEW_EXCHANGE = os.getenv("RABBITMQ_PREVIEW_EXCHANGE", "rds_preview")
-PREVIEW_ROUTING_KEY = os.getenv("RABBITMQ_PREVIEW_ROUTING_KEY", "rds.preview")
+PREVIEW_EXCHANGE = os.getenv("RABBITMQ_PREVIEW_EXCHANGE")
+PREVIEW_ROUTING_KEY = os.getenv("RABBITMQ_PREVIEW_ROUTING_KEY")
 
-RDS_ENCODER_HOST = os.getenv("RDS_ENCODER_HOST", "smartgen-mini")
-RDS_ENCODER_PORT = int(os.getenv("RDS_ENCODER_PORT", "1024"))
+RDS_ENCODER_HOST = os.getenv("RDS_ENCODER_HOST")
+RDS_ENCODER_PORT = os.getenv("RDS_ENCODER_PORT")
+
+required_env_vars = [
+    RABBITMQ_HOST,
+    RABBITMQ_USER,
+    RABBITMQ_PASS,
+    RABBITMQ_QUEUE,
+    PREVIEW_EXCHANGE,
+    PREVIEW_ROUTING_KEY,
+    RDS_ENCODER_HOST,
+    RDS_ENCODER_PORT,
+]
+
+if not all(required_env_vars):
+    missing_vars = [
+        var
+        for var in [
+            "RABBITMQ_HOST",
+            "RABBITMQ_USER",
+            "RABBITMQ_PASS",
+            "RABBITMQ_QUEUE",
+            "PREVIEW_EXCHANGE",
+            "PREVIEW_ROUTING_KEY",
+            "RDS_ENCODER_HOST",
+            "RDS_ENCODER_PORT",
+        ]
+        if not locals()[var]
+    ]
+    raise EnvironmentError(
+        f"Missing required environment variables: {', '.join(missing_vars)}"
+    )
+
+RDS_ENCODER_PORT = int(RDS_ENCODER_PORT)
 
 
 async def connect_smartgen():
