@@ -11,4 +11,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # Default command to run the consumer
-CMD [ "python", "-u", "main.py" ]
+CMD [ "python", "-u", "rds.py" ]

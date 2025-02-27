@@ -20,6 +20,7 @@ build:
 start: run
 
 run: stop
+	mkdir -p ${HOST_DIR}/logs
 	podman run -d --restart unless-stopped \
 		--network $(NETWORK_NAME) \
 		--name $(CONTAINER_NAME) \
