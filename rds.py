@@ -11,6 +11,8 @@ load_dotenv()
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.DEBUG)
+logging.getLogger("aiormq").setLevel(logging.INFO)
+logging.getLogger("aio_pika").setLevel(logging.INFO)
 
 RABBITMQ_HOST = os.getenv("RABBITMQ_HOST")
 RABBITMQ_USER = os.getenv("RABBITMQ_USER")
@@ -23,7 +25,7 @@ RABBITMQ_QUEUE = os.getenv("RABBITMQ_QUEUE")
 PREVIEW_EXCHANGE = os.getenv("RABBITMQ_PREVIEW_EXCHANGE")
 PREVIEW_ROUTING_KEY = os.getenv("RABBITMQ_PREVIEW_ROUTING_KEY")
 
-RDS_ENCODER_HOST = os.getenv("RDS_ENCODER_HOST")
+RDS_ENCODER_HOST = str(os.getenv("RDS_ENCODER_HOST"))
 RDS_ENCODER_PORT = os.getenv("RDS_ENCODER_PORT")
 
 required_env_vars = [
@@ -96,8 +98,9 @@ def send_command(sock: socket.socket, command: str, value: str):
 
         response = sock.recv(1024).decode("ascii", errors="ignore").strip()
         # 1024 is NOT the receiving port, but instead the maximum number of bytes to receive
-        logger.info("Encoder response: %s", response)
-        if response != "OK":
+        logger.debug("Encoder response: %s", response)
+        response = response.splitlines()
+        if response[-1] != "OK":
             logger.warning(
                 "Command '%s=%s' did not return `OK`. Response was: %s",
                 command,
@@ -125,7 +128,7 @@ async def on_message(
 ):
     async with message.process():
         raw_payload = message.body.decode("utf-8")
-        logger.info("Received track payload: %s", raw_payload)
+        logger.debug("Received track payload: %s", raw_payload)
 
         # If payload is JSON, parse it accordingly
         # track_info = json.loads(raw_payload)

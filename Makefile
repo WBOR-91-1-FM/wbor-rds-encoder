@@ -15,7 +15,7 @@ logsf:
 
 build:
 	@echo "Building..."
-	nice -n 10 podman build --quiet -t $(IMAGE_NAME) .
+	podman build --quiet -t $(IMAGE_NAME) .
 
 start: run
 
