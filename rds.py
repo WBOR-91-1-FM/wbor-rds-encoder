@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.DEBUG)
 logging.getLogger("aiormq").setLevel(logging.INFO)
 logging.getLogger("aio_pika").setLevel(logging.INFO)
+logging.getLogger("asyncio").setLevel(logging.INFO)
 
 RABBITMQ_HOST = os.getenv("RABBITMQ_HOST")
 RABBITMQ_USER = os.getenv("RABBITMQ_USER")
@@ -164,7 +165,7 @@ async def on_message(
 
 async def main():
     # 1) Connect to encoder
-    sock = connect_smartgen()
+    sock = await connect_smartgen()
 
     # 2) Connect to RabbitMQ
     connection = await aio_pika.connect_robust(
