@@ -3,6 +3,8 @@ import logging
 import os
 import json
 import socket
+import time
+from contextlib import suppress
 
 import aio_pika
 from dotenv import load_dotenv
@@ -62,54 +64,115 @@ if not all(required_env_vars):
 RDS_ENCODER_PORT = int(RDS_ENCODER_PORT)
 
 
-async def connect_smartgen():
-    """Maintains a persistent TCP socket to the SmartGen Mini."""
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    try:
-        sock.connect((RDS_ENCODER_HOST, RDS_ENCODER_PORT))
-        sock.settimeout(
-            5
-        )  # If any socket operation (like connect, recv, or send) takes longer than 5 seconds, a socket.timeout exception will be raised
-        logger.info(
-            "Connected to SmartGen Mini RDS encoder at %s:%d",
-            RDS_ENCODER_HOST,
-            RDS_ENCODER_PORT,
-        )
-        return sock
-    except Exception as e:
-        logger.error(
-            "Failed to connect to SmartGen Mini RDS encoder at %s:%d: %s",
-            RDS_ENCODER_HOST,
-            RDS_ENCODER_PORT,
-            e,
-        )
-        sock.close()
-        raise
-
-
-def send_command(sock: socket.socket, command: str, value: str):
+class SmartGenConnectionManager:
     """
-    Send a line like `TEXT=HELLO`.
-    Wait for `OK` or `NO` from the encoder.
+    Maintains a persistent TCP socket to the SmartGen Mini RDS encoder,
+    with automatic reconnection logic.
     """
-    message = f"{command}={value}\r\n"
-    logger.info("Sending to encoder: %s", message.strip())
-    try:
-        sock.sendall(message.encode("ascii", errors="ignore"))
 
-        response = sock.recv(1024).decode("ascii", errors="ignore").strip()
-        # 1024 is NOT the receiving port, but instead the maximum number of bytes to receive
-        logger.debug("Encoder response: %s", response)
-        response = response.splitlines()
-        if response[-1] != "OK":
-            logger.warning(
-                "Command '%s=%s' did not return `OK`. Response was: %s",
-                command,
-                value,
-                response,
-            )
-    except Exception as e:
-        logger.error("Failed to send command to encoder: %s", e)
+    def __init__(self, host: str, port: int, timeout: float = 5.0):
+        self.host = host
+        self.port = port
+        self.timeout = timeout
+        self.sock = None
+        self._stop = False
+        self._reconnect_task = None
+
+    async def start(self):
+        """
+        Launch a background task to ensure self.sock remains connected.
+        """
+        # Use create_task to start a background reconnection manager.
+        self._reconnect_task = asyncio.create_task(self._manage_connection())
+
+    async def stop(self):
+        """
+        Signal the background manager to stop and close socket.
+        """
+        self._stop = True
+        if self._reconnect_task:
+            self._reconnect_task.cancel()
+            with suppress(asyncio.CancelledError):
+                await self._reconnect_task
+
+        if self.sock:
+            self.sock.close()
+            self.sock = None
+            logger.info("Closed SmartGen socket.")
+
+    async def _manage_connection(self):
+        """
+        Continuously ensure there's a valid socket connection to the encoder.
+        If the connection drops, retry with exponential backoff.
+        """
+        backoff = 1
+        while not self._stop:
+            if self.sock is None:
+                try:
+                    logger.info("Attempting to connect to SmartGen RDS encoder...")
+                    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                    sock.connect((self.host, self.port))
+                    sock.settimeout(self.timeout)
+                    self.sock = sock
+                    logger.info(
+                        "Connected to SmartGen Mini RDS encoder at %s:%d",
+                        self.host,
+                        self.port,
+                    )
+                    # Reset backoff on successful connect
+                    backoff = 1
+                except Exception as e:
+                    logger.error(
+                        "Failed to connect to SmartGen RDS encoder at %s:%d: %s",
+                        self.host,
+                        self.port,
+                        e,
+                    )
+                    # Wait before retrying
+                    await asyncio.sleep(backoff)
+                    backoff = min(backoff * 2, 60)  # Exponential backoff up to 1 min
+            else:
+                # If we already have a socket, just idle until it fails or we're stopped.
+                await asyncio.sleep(1)
+
+    def send_command(self, command: str, value: str):
+        """
+        Send a line like `TEXT=HELLO` to the encoder and wait for `OK` or `NO`.
+        Raises an exception if no socket is available or if the send fails.
+        """
+        if not self.sock:
+            raise ConnectionError("SmartGen socket is not connected.")
+
+        message = f"{command}={value}\r\n"
+        logger.info("Sending to encoder: %s", message.strip())
+        try:
+            self.sock.sendall(message.encode("ascii", errors="ignore"))
+            response = self.sock.recv(1024).decode("ascii", errors="ignore").strip()
+            logger.debug("Encoder response: %s", response)
+            response_lines = response.splitlines()
+            if not response_lines:
+                logger.warning("No response from encoder.")
+            elif response_lines[-1] != "OK":
+                logger.warning(
+                    "Command '%s=%s' did not return `OK`. Response was: %s",
+                    command,
+                    value,
+                    response_lines,
+                )
+                raise Exception(f"Command '{command}={value}' failed: {response}")
+        except socket.error as e:
+            logger.error("Socket error while sending command to encoder: %s", e)
+            # Attempt to close so the manager reconnects
+            self.sock.close()
+            self.sock = None
+            raise
+
+        except Exception as e:
+            logger.error("General error in send_command: %s", e)
+            # We can also close so the manager attempts a reconnect
+            self.sock.close()
+            self.sock = None
+            raise
 
 
 def sanitize_text(raw_text: str) -> str:
@@ -118,12 +181,13 @@ def sanitize_text(raw_text: str) -> str:
     """
     # Example naive sanitization
     sanitized = raw_text.upper()
-    return sanitized[:64]  # SmartGen TEXT= limit is 64
+    # SmartGen TEXT= limit is 64 characters
+    return sanitized[:64]
 
 
 async def on_message(
     message: aio_pika.IncomingMessage,
-    sock: socket.socket,
+    smartgen_mgr: SmartGenConnectionManager,
     channel: aio_pika.Channel,
     preview_exchange: aio_pika.Exchange,
 ):
@@ -140,34 +204,43 @@ async def on_message(
         title = raw_payload
         text_value = sanitize_text(title)
 
-        # 1) Send RDS TEXT=
-        send_command(sock, "TEXT", text_value)
+        # Attempt to send commands. If the socket fails, the manager will reconnect,
+        # but we may or may not want to requeue the message or handle partial failures.
+        try:
+            smartgen_mgr.send_command("TEXT", text_value)
 
-        # 2) Send RT+TAG=
-        # Example payload for RT+ (title, artist)
-        rt_plus_payload = f"TITLE:{text_value};ARTIST:UNKNOWN"
-        send_command(sock, "RT+TAG", rt_plus_payload)
+            # Example payload for RT+ (title, artist). The 'ARTIST' is a placeholder here.
+            rt_plus_payload = f"TITLE:{text_value};ARTIST:UNKNOWN"
+            smartgen_mgr.send_command("RT+TAG", rt_plus_payload)
 
-        # 3) Publish a "preview" message to another exchange
-        preview_body = {"title": text_value, "artist": "UNKNOWN"}
-        preview_message = aio_pika.Message(
-            body=json.dumps(preview_body).encode("utf-8")
-        )
-        await preview_exchange.publish(
-            message=preview_message, routing_key=PREVIEW_ROUTING_KEY
-        )
-        logger.info(
-            "Published preview to exchange %s with routing key %s",
-            PREVIEW_EXCHANGE,
-            PREVIEW_ROUTING_KEY,
-        )
+            # If the previous commands succeeded, publish a preview to the exchange
+            preview_body = {"title": text_value, "artist": "UNKNOWN"}
+            preview_message = aio_pika.Message(
+                body=json.dumps(preview_body).encode("utf-8")
+            )
+            await preview_exchange.publish(
+                message=preview_message, routing_key=PREVIEW_ROUTING_KEY
+            )
+            logger.info(
+                "Published preview to exchange %s with routing key %s",
+                PREVIEW_EXCHANGE,
+                PREVIEW_ROUTING_KEY,
+            )
+        except Exception:
+            # This means we failed to send to the encoder.
+            # Either
+            #   1) raise an exception so the message is requeued, or
+            #   2) just log the error, acknowledging the message anyway.
+            # We'll just log here and acknowledge the message.
+            logger.exception("Error sending commands to SmartGen encoder.")
 
 
 async def main():
-    # 1) Connect to encoder
-    sock = await connect_smartgen()
+    # 1) Create a SmartGen connection manager and start its reconnection task
+    smartgen_mgr = SmartGenConnectionManager(RDS_ENCODER_HOST, RDS_ENCODER_PORT)
+    await smartgen_mgr.start()
 
-    # 2) Connect to RabbitMQ
+    # 2) Connect to RabbitMQ with robust connection (automatically tries to reconnect)
     connection = await aio_pika.connect_robust(
         host=RABBITMQ_HOST, login=RABBITMQ_USER, password=RABBITMQ_PASS
     )
@@ -184,14 +257,24 @@ async def main():
     logger.info("Waiting for messages in queue '%s' ...", RABBITMQ_QUEUE)
 
     # 5) Start consuming
-    await queue.consume(lambda msg: on_message(msg, sock, channel, preview_exchange))
+    # On receipt of a message, call `on_message()` with the SmartGen manager and channel
+    await queue.consume(
+        lambda msg: on_message(msg, smartgen_mgr, channel, preview_exchange)
+    )
 
     # Keep the event loop running
     try:
         while True:
             await asyncio.sleep(1)
+    except asyncio.CancelledError:
+        pass
+    except KeyboardInterrupt:
+        pass
     finally:
-        sock.close()
+        logger.info("Shutting down...")
+        # Close socket manager
+        await smartgen_mgr.stop()
+        # Close rabbit connection
         await connection.close()
 
 
