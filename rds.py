@@ -237,7 +237,7 @@ async def on_message(
         raw_payload = message.body.decode("utf-8")
         logger.debug("Received track payload: `%s`", raw_payload)
 
-        track_info = json.loads(raw_payload)
+        track_info = json.loads(raw_payload).get("spin", {})
         title = track_info.get("title", "")
         artist = track_info.get("artist", "")
         logger.debug("Extracted track info: `%s` - `%s`", artist, title)
