@@ -240,12 +240,21 @@ async def on_message(
         track_info = json.loads(raw_payload).get("spin", {})
         title = track_info.get("title", "")
         artist = track_info.get("artist", "")
-        logger.debug("Extracted track info: `%s` - `%s`", artist, title)
-
-        # Attempt to send commands. If the socket fails, the manager will reconnect,
-        # but we may or may not want to requeue the message or handle partial failures.
-        # try:
-        # smartgen_mgr.send_command("TEXT", f"{artist} - {title}")
+        if not title and not artist:
+            logger.warning("Missing track info in payload: `%s`", raw_payload)
+        else:
+            logger.debug("Extracted track info: `%s` - `%s`", artist, title)
+            try:
+                # Attempt to send commands. If the socket fails, the manager will reconnect,
+                # but we may or may not want to requeue the message or handle partial failures.
+                smartgen_mgr.send_command("TEXT", f"{artist} - {title}")
+            except Exception:
+                # This means we failed to send to the encoder.
+                # Either
+                #   1) raise an exception so the message is requeued, or
+                #   2) just log the error, acknowledging the message anyway.
+                # We'll just log here and acknowledge the message.
+                logger.exception("Error sending commands to SmartGen encoder.")
 
         # Example payload for RT+ (title, artist). The 'ARTIST' is a placeholder here.
         # rt_plus_payload = f"TITLE:{text_value};ARTIST:UNKNOWN"
@@ -264,13 +273,6 @@ async def on_message(
         #     PREVIEW_EXCHANGE,
         #     PREVIEW_ROUTING_KEY,
         # )
-        # except Exception:
-        # This means we failed to send to the encoder.
-        # Either
-        #   1) raise an exception so the message is requeued, or
-        #   2) just log the error, acknowledging the message anyway.
-        # We'll just log here and acknowledge the message.
-        # logger.exception("Error sending commands to SmartGen encoder.")
 
 
 async def main():
