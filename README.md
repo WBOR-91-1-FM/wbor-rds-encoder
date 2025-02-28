@@ -81,7 +81,8 @@ For example, if this app is configured to send data to port `1024`, any attempt 
 
 ## TODO
 
-- [ ] Decide on the fields coming from Spinitron
+- [x] Decide on the fields coming from Spinitron
+  - We're just concerned with artist name and song title.
 - [ ] Non-ASCII character replacement library? Or just omit sending title all together?
   - [ ] <https://stackoverflow.com/questions/3194516/replace-special-characters-with-ascii-equivalent>
   - [ ] <https://www.dcode.fr/special-characters>
@@ -92,8 +93,8 @@ For example, if this app is configured to send data to port `1024`, any attempt 
 ## Notes
 
 - Each RT+ packed only supports two codes/tags
-  - For example: `Fireflies – OWL CITY – Ocean Eyes`
-  - We want to tag Title, Artist and Album. Accordingly, we would need two separate ODA packets, because we have three things to tag and each ODA packet supports two RT+ tags each. So, we need to create an RT+ ODA packet for Title and Artist, and then another tag for Album and a blank (null). Because the "Item.Toggle" bit will remain constant, the receiver will cache and cumulatively collect these tags as we interleave the transmission of these ODA packets.
-- [RDS RT+ Codes](https://msx.gay/radio/rtplus)
-- [Another source for RDS RT+ Codes](https://pira.cz/rds/rtpclass.pdf)
+  - For example: `Fireflies – OWL CITY – Ocean Eyes`. From this, we'd want to tag Title, Artist and Album. Accordingly, we would need two separate ODA packets, because we have three things to tag and each ODA packet supports two RT+ tags each. So, we need to create an RT+ ODA packet for Title and Artist, and then another tag for Album and a blank (null). Because the "Item.Toggle" bit will remain constant, the receiver should (but not necessarily, depending on the model) cache and cumulatively collect these tags as we interleave the transmission of these ODA packets.
+- This app only transmits artist and song name RT+ tags, as these appear to be the most universally supported tags across vehicles (as of the time of writing...).
+  - [Full list of RDS RT+ Codes](https://msx.gay/radio/rtplus)
+  - [Secondary source listing RDS RT+ Codes](https://pira.cz/rds/rtpclass.pdf)
 - [Inspo for RT+ syntax](https://www.thimeo.com/documentation/fm_signal_settings.html)

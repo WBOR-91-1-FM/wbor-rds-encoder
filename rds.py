@@ -96,10 +96,14 @@ if not all(required_env_vars):
         if not locals()[var]
     ]
     raise EnvironmentError(
-        f"Missing required environment variables: {', '.join(missing_vars)}"
+        f"Missing required environment variables: `{', '.join(missing_vars)}`"
     )
 
 RDS_ENCODER_PORT = int(RDS_ENCODER_PORT)
+
+# Content type codes
+ARTIST_TAG = "04"
+TITLE_TAG = "01"
 
 
 class SmartGenConnectionManager:
@@ -197,7 +201,7 @@ class SmartGenConnectionManager:
                     value,
                     response_lines,
                 )
-                raise Exception(f"Command '{command}={value}' failed: {response}")
+                raise RuntimeError(f"Command `{command}={value}` failed: `{response}`")
         except socket.error as e:
             logger.error("Socket error while sending command to encoder: `%s`", e)
             # Attempt to close so the manager reconnects
@@ -216,11 +220,72 @@ class SmartGenConnectionManager:
 def sanitize_text(raw_text: str) -> str:
     """
     Strip or replace disallowed characters, remove or filter out profane words.
+
+    We need to reduce the character set to the ASCII range and ensure that the
+    text is safe for broadcast. This may involve:
+    - Removing control characters
+    - Filtering out profanity
+    - Truncating to a safe length
+    - Converting to uppercase
+    - Replacing special characters with safe equivalents
     """
     # Example naive sanitization
     sanitized = raw_text.upper()
     # SmartGen TEXT= limit is 64 characters
     return sanitized[:64]
+
+
+def build_rt_plus_tag_command(
+    full_text: str, artist: str, title: str, duration: int
+) -> str:
+    """
+    Build the RT+TAG payload string for the 'artist - title' text.
+
+    RT+ requires specifying the offsets, lengths, and content type codes
+    for each tagged item. The format is:
+
+        <content_type_1>,
+        <start_pos_1>,
+        <length_1>,
+        <content_type_2>,
+        <start_pos_2>,
+        <length_2>,
+        <item_running_bit>,
+        <timeout>
+
+    The accepted values for each field is as follows:
+    (00-63, 00-63, 00-63, 00-63, 00-63, 00-31, 0-1, 0-255).
+
+    Timeout values: 0=NO TIMEOUT, 1-255 timeout in minutes
+
+    NOTE: The Item Toggle bit can't be set manually, since it's toggled each time the RT+TAG
+    command is issued.
+
+    Return a string to pass as the 'RT+TAG=' value on the SmartGen.
+    """
+    running_bit = 1
+
+    # Provided a duration in seconds, calculate the number of minutes
+    # If the duration is 0, the resulting timeout will be 0 (no timeout), meaning
+    # the text will remain on the display indefinitely.
+    duration_minutes = duration // 60
+    timeout = duration_minutes
+
+    # Find where the artist substring starts
+    # We assume the text is "ARTIST - TITLE".
+    # So artist starts at index 0, with length = len(artist).
+    start_artist = full_text.find(artist)
+    len_artist = len(artist)
+
+    # Find where the title substring starts
+    # We expect that " - " is between them, so the title starts after that.
+    start_title = full_text.find(title)
+    len_title = len(title)
+
+    # Build the payload according to the expected format
+    rt_plus_payload = f"{ARTIST_TAG},{start_artist},{len_artist},{TITLE_TAG},{start_title},{len_title},{running_bit},{timeout}"
+
+    return rt_plus_payload
 
 
 async def on_message(
@@ -240,25 +305,38 @@ async def on_message(
         track_info = json.loads(raw_payload).get("spin", {})
         title = track_info.get("title", "")
         artist = track_info.get("artist", "")
+        duration_seconds = track_info.get("duration", 0)
         if not title and not artist:
             logger.warning("Missing track info in payload: `%s`", raw_payload)
         else:
             logger.debug("Extracted track info: `%s` - `%s`", artist, title)
+
+            # Create a TEXT value
+            text = f"{artist} - {title}"
+            logger.debug("Text value (pre-sanitization): `%s`", text)
+
+            # Need to handle cases where it will exceed the 64 character limit
+
+            # Sanitize
+            sanitized_text = sanitize_text(text)
+            logger.debug("Sanitized text: `%s`", sanitized_text)
+
             try:
                 # Attempt to send commands. If the socket fails, the manager will reconnect,
                 # but we may or may not want to requeue the message or handle partial failures.
-                smartgen_mgr.send_command("TEXT", f"{artist} - {title}")
-            except Exception:
+                smartgen_mgr.send_command("TEXT", sanitized_text)
+
+                rt_plus_payload = build_rt_plus_tag_command(
+                    text, artist, title, duration_seconds
+                )
+                smartgen_mgr.send_command("RT+TAG", rt_plus_payload)
+            except (ConnectionError, RuntimeError, socket.error) as e:
                 # This means we failed to send to the encoder.
                 # Either
                 #   1) raise an exception so the message is requeued, or
                 #   2) just log the error, acknowledging the message anyway.
                 # We'll just log here and acknowledge the message.
-                logger.exception("Error sending commands to SmartGen encoder.")
-
-        # Example payload for RT+ (title, artist). The 'ARTIST' is a placeholder here.
-        # rt_plus_payload = f"TITLE:{text_value};ARTIST:UNKNOWN"
-        # smartgen_mgr.send_command("RT+TAG", rt_plus_payload)
+                logger.error("Error sending commands to SmartGen encoder: `%s`", e)
 
         # If the previous commands succeeded, publish a preview to the exchange
         # preview_body = {"title": text_value, "artist": "UNKNOWN"}
