@@ -291,6 +291,11 @@ async def main():
     # 3) Ensure queue is declared (in case not declared externally)
     # The queue will be durable, so it survives a RabbitMQ restart
     queue = await channel.declare_queue(RABBITMQ_QUEUE, durable=True)
+    channel.queue_bind(
+        exchange="spin_exchange",
+        queue=RABBITMQ_QUEUE,
+        routing_key="spinitron.#",
+    )
 
     # 4) Declare the preview exchange
     preview_exchange = await channel.declare_exchange(
