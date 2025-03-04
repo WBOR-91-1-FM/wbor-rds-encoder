@@ -1,0 +1,4 @@
+aio-pika==9.5.4
+python-dotenv
+colorlog
+pytz
