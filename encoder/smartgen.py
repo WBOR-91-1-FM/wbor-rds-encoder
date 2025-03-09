@@ -94,13 +94,23 @@ class SmartGenConnectionManager:
         try:
             self.sock.sendall(message.encode("ascii", errors="ignore"))
             response = self.sock.recv(1024).decode("ascii", errors="ignore").strip()
-            logger.debug("Encoder response: `%s`", response)
+            logger.debug("Encoder response: `%s`", response.strip())
             response_lines = response.splitlines()
             if not response_lines:
                 logger.warning("No response from encoder.")
+            elif response_lines[0] == "NO":
+                logger.warning(
+                    "Command `%s=%s` was rejected by encoder. Response was: `%s`",
+                    command,
+                    value,
+                    response_lines[0],
+                )
+                raise RuntimeError(
+                    f"Command `{command}={value}` rejected: `{response}`"
+                )
             elif response_lines[-1] != "OK":
                 logger.warning(
-                    "Command `%s=%s` did not return `OK`. Response was: `%s`",
+                    "Command `%s=%s` returned an unexpected response: `%s`",
                     command,
                     value,
                     response_lines,
