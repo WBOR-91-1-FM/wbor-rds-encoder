@@ -17,7 +17,7 @@ logsf:
 	$(DOCKER_TOOL) logs -f $(CONTAINER_NAME)
 
 build:
-	@echo "Building..."
+	@echo "Building $(IMAGE_NAME)..."
 	$(DOCKER_TOOL) build --quiet -t $(IMAGE_NAME) .
 
 start: run

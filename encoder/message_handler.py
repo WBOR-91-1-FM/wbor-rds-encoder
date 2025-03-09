@@ -29,10 +29,12 @@ async def on_message(
         logger.debug("Received track payload: `%s`", raw_payload)
 
         track_info = json.loads(raw_payload).get("spin", {})
-        title = track_info.get("title", "")
-        artist = track_info.get("artist", "")
+        logger.debug("Extracted track info: `%s`", track_info)
+        title = track_info.get("song")
+        artist = track_info.get("artist")
         duration_seconds = track_info.get("duration", 0)
-        if not title and not artist:
+
+        if not (title and artist):
             logger.warning("Missing track info in payload: `%s`", raw_payload)
         else:
             logger.debug("Extracted track info: `%s` - `%s`", artist, title)
