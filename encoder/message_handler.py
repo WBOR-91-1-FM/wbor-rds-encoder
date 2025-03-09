@@ -28,8 +28,8 @@ async def on_message(
         raw_payload = message.body.decode("utf-8")
         logger.debug("Received track payload: `%s`", raw_payload)
 
-        track_info = json.loads(raw_payload).get("spin", {})
-        logger.debug("Extracted track info: `%s`", track_info)
+        track_info = json.loads(raw_payload)
+        logger.debug("Track JSON: `%s`", track_info)
         title = track_info.get("song")
         artist = track_info.get("artist")
         duration_seconds = track_info.get("duration", 0)
@@ -54,6 +54,7 @@ async def on_message(
                 # but we may or may not want to requeue the message or handle partial failures.
                 smartgen_mgr.send_command("TEXT", sanitized_text)
 
+                # TODO: the text pagges into this function should also be sanitized
                 rt_plus_payload = build_rt_plus_tag_command(
                     text, artist, title, duration_seconds
                 )
