@@ -6,6 +6,8 @@ Responsible for dynamically updating the RDS (Radio Data System) [RT (RadioText)
 
 ***What is RDS, you ask? Read [this primer](https://pira.cz/rds/show.asp?art=rds_encoder_support).***
 
+![showcase](docs/example.jpg)
+
 > [!NOTE]
 > **This app is likely not suitable for transmitter networks** (stations who broadcast from more than one location). [UECP](https://www.rds.org.uk/2010/UECP.htm) is better designed for this, but not implemented in this app due to our station's single-transmitter usecase. From preliminary research, there are no features we "lose out on" (in our use) by choosing the SmartGen's ASCII communicational protocol. This is compounded by the fact that few reputable/battle-tested UECP libraries exist (that I could find).
 
@@ -13,9 +15,8 @@ Responsible for dynamically updating the RDS (Radio Data System) [RT (RadioText)
 
 - **RabbitMQ Consumer**: Consumes messages containing the currently playing track information. We use [Spinitron](https://spinitron.com/) as our source. (As for getting the messages published to this queue, read the [Data Flow](#data-flow) section.)
 - **Text Processing & Filtering**:
-  - Normalize text as ASCII
-  - Handles special characters by replacing or omitting them
-  - Removes profane words to ensure appropriate broadcast content
+  - Normalize text / unidecode to ASCII. Handles special characters by replacing them with question marks, though this can be customized.
+  - Censors [profane words](https://raw.githubusercontent.com/zacanger/profane-words/master/words.json) to ensure appropriate broadcast content
 - **RT (RadioText)**: a 64-character field that displays on newer FM receivers.
 - **[RT+ (RadioText Plus)](https://tech.ebu.ch/docs/techreview/trev_307-radiotext.pdf)**: Allows certain receivers to parse metadata fields from the RT, such as artist and song name.
 - **DEVA SmartGen Mini Integration**:
@@ -23,6 +24,7 @@ Responsible for dynamically updating the RDS (Radio Data System) [RT (RadioText)
   - Sends processed messages following [SmartGen ASCII Programming Syntax constraints](https://github.com/WBOR-91-1-FM/wbor-rds-encoder/blob/main/docs/sg_mini_user_manual.pdf) (p. 34).
 - **Parallel RDS Preview Publishing**:
   - Publishes processed text to a RabbitMQ exchange for consumption by a downstream preview module. For example, a web page or LED sign (e.g. BetaBrite) that reflects what is *currently being shown* by the RDS encoder.
+- **Discord Logging**: In situations where text is unidecoded or profane words are censored, the original and processed text is logged to a Discord channel (defined in the `.env`) for monitoring and debugging purposes.
   
 ## Message Formatting
 
@@ -79,20 +81,46 @@ The `docker-compose.yml` file defines the following services:
 
 ### Requirements
 
-To get the relevant song information, your logbook source will need to publish messages to a RabbitMQ exchange. This app will consume these messages and process them before sending them to the SmartGen Mini. The message payload requires that the following fields are present:
+To get the relevant song information, your logbook source will need to publish messages to a RabbitMQ exchange. This app will consume these messages and process them before sending them to the SmartGen Mini.
+
+The message payload requires that the following fields are present:
 
 - `artist`
 - `song`
 
-### Example
+The message should be in JSON format, like so:
 
-This is an example data flow used by our station. It is not a strict requirement for this app to be used in this way, but it is how we have implemented it.
+```json
+{
+  "artist": "Owl City",
+  "song": "Fireflies"
+}
+```
+
+This app will simply concatenate the `artist` and `song` fields to form the RT and RT+ tags. The `artist` field will be the first tag, followed by the `song` field. The app will then send these tags to the SmartGen Mini.
+
+```txt
+TEXT=Owl City - Fireflies
+```
+
+### Example flow
+
+This how we use it at WBOR. It is not a strict requirement for this app to be used in this way, but it is how we have implemented it (forks are welcome)!
 
 1. Spinitron sends track metadata to an [API proxy](https://github.com/WBOR-91-1-FM/spinitron-proxy/)
 2. An [API watchdog script](https://github.com/WBOR-91-1-FM/wbor-api-watchdog) sees that a new track is playing and publishes the data as a message to a RabbitMQ exchange
 3. This app consumes the message, processes and sanitizes the text.
 4. The processed RT and RT+ tags are sent to the SmartGen.
-5. *(Optional)* The processed text is published to a RabbitMQ exchange for downstream RDS previewing.
+5. The processed text is published to a RabbitMQ exchange for downstream RDS previewing for sanity checking.
+
+## Dependencies
+
+There are two key packages that this app relies on that affect the message processing:
+
+- **[Unidecode](https://pypi.org/project/Unidecode/)**: Converts Unicode characters to ASCII. This is important for ensuring that special characters are displayed correctly on RDS receivers.
+- **[Profane words list](https://github.com/zacanger/profane-words)**: Used to censor profane words from the text.
+
+If either of these change, it may affect the output of the app.
 
 ## Notes on the SmartGen Mini
 
@@ -102,6 +130,33 @@ It's up to you to decide which port will be used for which function. Once you ma
 
 For example, if this app is configured to send data to port `1024`, any attempt to connect to the encoder on this port while the app is running will fail, as the app maintains a continuous connection. To make changes to the encoder settings while the app is active, use the unoccupied port (in this case `1025`).
 
+## Installation / Usage
+
+1. Clone the repository:
+
+2. In `encoder/`, copy the `.env.sample` file to `.env` and fill in the necessary values:
+
+   ```bash
+   cp .env.sample .env
+   ```
+
+3. Build the Docker containers:
+
+   ```bash
+   docker compose up -d --build
+   ```
+
+4. To view the logs:
+
+   ```bash
+    docker compose logs -f
+    ```
+
+5. To stop the containers:
+
+    ```bash
+    docker compose down
+
 ## Notes
 
 - Each RT+ packed only supports two codes/tags
@@ -110,3 +165,7 @@ For example, if this app is configured to send data to port `1024`, any attempt 
   - [Full list of RDS RT+ Codes](https://msx.gay/radio/rtplus)
   - [Secondary source listing RDS RT+ Codes](https://pira.cz/rds/rtpclass.pdf)
 - [Inspo for RT+ syntax](https://www.thimeo.com/documentation/fm_signal_settings.html)
+
+## Contributing
+
+Contributions are welcome! Please open an issue or pull request if you have any suggestions or improvements. It is our hope that more stations feel empowered to use RDS to bring their broadcasts into the modern era of radio tech.

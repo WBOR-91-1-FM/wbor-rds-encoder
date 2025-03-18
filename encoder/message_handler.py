@@ -66,8 +66,8 @@ async def on_message(
             artist_in_truncated = sanitized_artist in truncated_text
             title_in_truncated = sanitized_title in truncated_text
 
-            # Only tag fields that fully fit TODO: first n characters that fit
-            # Instead of empty tag
+            # Only tag fields that fully fit
+            # TODO: first n characters that fit instead of empty tag
             rt_plus_artist = sanitized_artist if artist_in_truncated else ""
             rt_plus_title = sanitized_title if title_in_truncated else ""
 
@@ -89,8 +89,10 @@ async def on_message(
                     # Reconstruct the parsed values for logging
                     decoded_payload = decode_rt_plus(rt_plus_payload, truncated_text)
                     logger.debug("Decoded RT+ payload: `%s`", decoded_payload)
+
+                    # Publish to the preview queue
             except (ConnectionError, RuntimeError, socket.error) as e:
-                # Decide if we should requeue the message (e.g., network failure)
+                # TODO: decide if we should requeue the message (e.g., network failure)
                 raise aio_pika.exceptions.AMQPError("Failed to send to encoder") from e
         except json.JSONDecodeError:
             logger.critical("Failed to parse JSON from payload: `%s`", raw_payload)

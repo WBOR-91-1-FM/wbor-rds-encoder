@@ -16,12 +16,14 @@ async def sanitize_text(raw_text: str) -> str:
     Strip or replace disallowed characters, remove or filter out profane words.
 
     We need to reduce the character set to the ASCII range and ensure that the
-    text is safe for broadcast. This may involve:
+    text is safe for broadcast. This involves:
     - Removing control characters
     - Filtering out profanity
-    - Truncating to a safe length
-    - Converting to uppercase
-    - Replacing special characters with safe equivalents
+    - Converting to uppercase (for receiver compatibility)
+    - Replacing special characters with safe equivalents if possible
+        - If not, replace with a question mark
+
+    Note: all returned text is capitalized.
     """
     logger.debug("Sanitizing text: `%s`", raw_text)
     unidecoded_text = raw_text
@@ -35,7 +37,7 @@ async def sanitize_text(raw_text: str) -> str:
         unidecoded_text = unidecode(raw_text, errors="replace").strip()
 
         log_message = (
-            f"Non-ASCII characters found: {''.join(set(non_ascii_chars))}\n"
+            f"Non-ASCII characters found: `{''.join(set(non_ascii_chars))}`\n"
             f"Original: `{raw_text}`\n"
             f"Unidecoded: `{unidecoded_text}`"
         )

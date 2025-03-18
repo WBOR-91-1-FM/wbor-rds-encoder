@@ -1,5 +1,11 @@
 """
-Utility RT+ module to decode RT+ payloads into metadata dictionaries.
+Utility RT+ module to decode RT+ payload strings into metadata dictionaries
+using a provided RT string. Used as a sanity check for RT+ tagging and to pass
+values to the preview queue.
+
+Example:
+    >>> decode_rt_plus("ARTIST_TAG,0,5,TITLE_TAG,8,10,0,0", "Queen - Radio Gaga")
+    {'artist': 'Queen', 'title': 'Radio Gaga'}
 """
 
 from config import ARTIST_TAG, TITLE_TAG
@@ -9,7 +15,12 @@ def decode_rt_plus(rt_plus_payload: str, text: str) -> dict:
     """
     Decode an RT+ payload into a metadata dictionary.
     Expected payload format (excluding the final two values):
-        <content_type_1>,<start_pos_1>,<length_1>,<content_type_2>,<start_pos_2>,<length_2>
+        <content_type_1>,
+        <start_pos_1>,
+        <length_1>,
+        <content_type_2>,
+        <start_pos_2>,
+        <length_2>
     """
     tags = rt_plus_payload.split(",")[:-2]
     if len(tags) != 6:
