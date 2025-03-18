@@ -190,9 +190,14 @@ Overall, unidecoding is a very imperfect science. It will not always yield a hum
 
 ![example](docs/crazy-unidecode.png)
 
+Also, the profanity filtering can be a bit overzealous. It may censor words that are not actually profane (e.g. `jamie xx` -> `jamie **`). This is a known limitation of the profanity list used in this app.
+
 ## Future Work
 
-Use an LLM for profanity filtering and unidecoding. This would allow for more accurate translations and profanity filtering. This would also allow for more accurate translations of non-Latin characters. Still probably not perfect, but likely better than what we have now in terms of catching edge cases or combinations that aren't accounted for.
+- Use an LLM for profanity filtering and unidecoding. This would allow for more accurate translations and profanity filtering. This would also allow for more accurate translations of non-Latin characters. Still probably not perfect, but likely better than what we have now in terms of catching edge cases or combinations that aren't accounted for.
+- Add support for a whitelist of words that should not be censored. This would allow for more flexibility in the profanity filtering.
+  - .txt file based
+  - Discord bot callback to add words to the whitelist
 
 ## Contributing
 
