@@ -1,5 +1,15 @@
 """
-Connection manager for the SmartGen Mini RDS encoder.
+Connection manager for the SmartGen Mini RDS encoder. Handles automatic
+reconnection, starting, stopping, and command sending.
+
+Example usage:
+
+```python
+manager = SmartGenConnectionManager(RDS_ENCODER_HOST, RDS_ENCODER_PORT)
+manager.start()
+manager.send_command("TEXT", "HELLO")
+manager.stop()
+```
 """
 
 import asyncio
