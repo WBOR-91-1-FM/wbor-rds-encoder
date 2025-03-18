@@ -16,7 +16,6 @@ tagged item. The format is:
 The accepted values for each field is as follows:
 (00-63, 00-63, 00-63, 00-63, 00-63, 00-31, 0-1, 0-255).
 
-
 NOTE: Only two items can be tagged at a time, so no more than two pairs of
 content_type, start_pos, and length can be specified at once.
 
@@ -66,6 +65,10 @@ def build_rt_plus_tag_command(
     if artist != "NO ARTIST":
         start_artist = full_text.find(artist)
         if start_artist != -1:
+            # Ensure within the bounds of 00-63
+            if len(artist) > 63:
+                logger.critical("Artist exceeds 63 characters, trimming: `%s`", artist)
+                artist = artist[:63]
             payload_parts.append(f"{ARTIST_TAG},{start_artist},{len(artist)}")
         else:
             logger.warning("Artist not found in `full_text`: `%s`", artist)
@@ -73,6 +76,10 @@ def build_rt_plus_tag_command(
     if title != "NO TITLE":
         start_title = full_text.find(title)
         if start_title != -1:
+            # Ensure within the bounds of 00-63
+            if len(title) > 63:
+                logger.critical("Title exceeds 63 characters, trimming: `%s`", title)
+                title = title[:63]
             payload_parts.append(f"{TITLE_TAG},{start_title},{len(title)}")
         else:
             logger.warning("Title not found in `full_text`: `%s`", title)
@@ -82,6 +89,17 @@ def build_rt_plus_tag_command(
         logger.error("No valid artist or title found in `full_text`")
         return ""
 
+    # The third to last value has a unique bound of 31, so we need to check
+    # if it exceeds this value and if so, set to 31.
+    if payload_parts[-1].split(",")[2] > 31:
+        payload_parts[-1] = ",".join(
+            # Keep the first two values, set the third to 31
+            payload_parts[-1].split(",")[:2]
+            + ["31"]
+        )
+
+    # Now that we've handled for potential final value exceeding 31, we can
+    # join the parts together with the running bit and timeout
     rt_plus_payload = ",".join(payload_parts + [str(running_bit), str(timeout)])
 
     logger.debug("Final `RT+TAG` payload: `%s`", rt_plus_payload)

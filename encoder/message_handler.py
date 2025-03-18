@@ -31,8 +31,6 @@ async def on_message(
 
             # Parse and validate JSON
             track_info = json.loads(raw_payload)
-            logger.debug("Track JSON: `%s`", track_info)
-
             artist = track_info.get("artist")
             title = track_info.get("song")
             duration_seconds = track_info.get("duration", 0)
@@ -48,7 +46,9 @@ async def on_message(
             sanitized_artist = sanitize_text(artist)
             sanitized_title = sanitize_text(title)
             logger.debug(
-                "Sanitized track info: `%s` - `%s`", sanitized_artist, sanitized_title
+                "Returned sanitized track info: `%s` - `%s`",
+                sanitized_artist,
+                sanitized_title,
             )
 
             # (2) Create a TEXT value
@@ -75,7 +75,6 @@ async def on_message(
             #     TEXT= character limit.
             try:
                 smartgen_mgr.send_command("TEXT", truncated_text)
-                logger.debug("Sent TEXT command: `%s`", truncated_text)
 
                 rt_plus_payload = build_rt_plus_tag_command(
                     truncated_text, rt_plus_artist, rt_plus_title, duration_seconds
@@ -84,9 +83,7 @@ async def on_message(
                     logger.critical("Failed to build RT+TAG payload")
                 else:
                     smartgen_mgr.send_command("RT+TAG", rt_plus_payload)
-                    logger.debug("Sent RT+TAG command: `%s`", rt_plus_payload)
             except (ConnectionError, RuntimeError, socket.error) as e:
-                logger.error("Error sending commands to SmartGen encoder: `%s`", e)
                 # Decide if we should requeue the message (e.g., network failure)
                 raise aio_pika.exceptions.AMQPError("Failed to send to encoder") from e
         except json.JSONDecodeError:

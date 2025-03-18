@@ -116,7 +116,7 @@ class SmartGenConnectionManager:
                     response_lines[0],
                 )
                 raise RuntimeError(
-                    f"Command `{command}={value}` rejected: `{response}`"
+                    f"Command `{command}={value}` rejected: `{response.strip()}`"
                 )
             elif response_lines[-1] != "OK":
                 logger.warning(
@@ -132,10 +132,8 @@ class SmartGenConnectionManager:
             self.sock.close()
             self.sock = None
             raise
-
-        except Exception as e:
-            logger.error("General error in send_command: `%s`", e)
-            # We can also close so the manager attempts a reconnect
+        except Exception:
+            # Close so the manager attempts a reconnect
             self.sock.close()
             self.sock = None
             raise
