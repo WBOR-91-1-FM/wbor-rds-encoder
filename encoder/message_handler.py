@@ -8,6 +8,7 @@ import socket
 import aio_pika
 from utils.logging import configure_logging
 from utils.rt_plus import build_rt_plus_tag_command
+from utils.decode_rt_plus import decode_rt_plus
 from utils.sanitization import sanitize_text
 from smartgen import SmartGenConnectionManager
 
@@ -83,6 +84,10 @@ async def on_message(
                     logger.critical("Failed to build RT+TAG payload")
                 else:
                     smartgen_mgr.send_command("RT+TAG", rt_plus_payload)
+
+                    # Reconstruct the parsed values for logging
+                    decoded_payload = decode_rt_plus(rt_plus_payload, truncated_text)
+                    logger.debug("Decoded RT+ payload: `%s`", decoded_payload)
             except (ConnectionError, RuntimeError, socket.error) as e:
                 # Decide if we should requeue the message (e.g., network failure)
                 raise aio_pika.exceptions.AMQPError("Failed to send to encoder") from e

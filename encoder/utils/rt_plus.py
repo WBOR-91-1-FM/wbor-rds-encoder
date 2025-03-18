@@ -86,8 +86,20 @@ def build_rt_plus_tag_command(
 
     # Construct final payload
     if not payload_parts:
-        logger.error("No valid artist or title found in `full_text`")
+        logger.error("No valid artist or title payload found in `full_text`")
         return ""
+
+    if len(payload_parts) > 2:
+        logger.critical(
+            "More than two valid artist or title payloads found in `full_text` "
+            "(this should never happen)"
+        )
+        return ""
+
+    if len(payload_parts) == 1:
+        # If only one payload is present, append a second payload with empty
+        # values to ensure the command is valid.
+        payload_parts.append("00,00,00")
 
     # The third to last value has a unique bound of 31, so we need to check
     # if it exceeds this value and if so, set to 31.
