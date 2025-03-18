@@ -102,11 +102,6 @@ It's up to you to decide which port will be used for which function. Once you ma
 
 For example, if this app is configured to send data to port `1024`, any attempt to connect to the encoder on this port while the app is running will fail, as the app maintains a continuous connection. To make changes to the encoder settings while the app is active, use the unoccupied port (in this case `1025`).
 
-## TODO
-
-- [ ] Profanity filtering
-  - [ ] <https://github.com/zacanger/profane-words>
-
 ## Notes
 
 - Each RT+ packed only supports two codes/tags

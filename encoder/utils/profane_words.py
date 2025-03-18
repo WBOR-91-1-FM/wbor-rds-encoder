@@ -3,6 +3,7 @@ Load the `words.json` file and filter out profane words from the input text.
 """
 
 import json
+import re
 from utils.logging import configure_logging
 
 logger = configure_logging(__name__)
@@ -28,8 +29,10 @@ def filter_profane_words(text: str) -> str:
     logger.debug("Loaded profane words successfully.")
 
     for word in profane_words:
-        if word in text:
-            logger.debug("Replacing profane word: %s", word)
-        text = text.replace(word, "*" * len(word))
+        # Match the full word using word boundaries
+        pattern = r"\b" + re.escape(word) + r"\b"
+        if re.search(pattern, text):
+            logger.info("Replacing profane word: %s", word)
+        text = re.sub(pattern, lambda m: "*" * len(m.group(0)), text)
 
     return text
