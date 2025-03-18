@@ -20,7 +20,7 @@ from utils.discord import send_webhook as notify_discord
 logger = configure_logging(__name__)
 
 
-def filter_profane_words(text: str) -> str:
+async def filter_profane_words(text: str) -> str:
     """
     Filter out profane words from the input text.
     """
@@ -56,7 +56,7 @@ def filter_profane_words(text: str) -> str:
                 f"Original: `{text}`\n"
                 f"Censored: `{censored_text}`"
             )
-            notify_discord(log_message)
+            await notify_discord(log_message)
 
             return censored_text
 
