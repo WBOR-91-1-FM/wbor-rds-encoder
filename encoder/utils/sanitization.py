@@ -10,7 +10,7 @@ from utils.discord import send_webhook as notify_discord
 logger = configure_logging(__name__)
 
 
-def sanitize_text(raw_text: str) -> str:
+async def sanitize_text(raw_text: str) -> str:
     """
     Strip or replace disallowed characters, remove or filter out profane words.
 
@@ -23,7 +23,7 @@ def sanitize_text(raw_text: str) -> str:
     - Replacing special characters with safe equivalents
     """
     logger.debug("Sanitizing text: `%s`", raw_text)
-    original_text = raw_text
+    unidecoded_text = raw_text
 
     # (1) Detect non-ASCII characters. If found, unidecode the text by replacing
     #     them with ASCII equivalents. If none are found, the character is
@@ -31,19 +31,19 @@ def sanitize_text(raw_text: str) -> str:
     #     for debugging to logs and Discord.
     non_ascii_chars = re.findall(r"[^\x00-\x7F]", raw_text)
     if non_ascii_chars:
-        unidecoded_text = unidecode(raw_text, errors="replace")
+        unidecoded_text = unidecode(raw_text, errors="replace").strip()
 
         log_message = (
             f"Non-ASCII characters found: {''.join(set(non_ascii_chars))}\n"
-            f"Original: `{original_text}`\n"
+            f"Original: `{raw_text}`\n"
             f"Unidecoded: `{unidecoded_text}`"
         )
         logger.warning(log_message)
-        notify_discord(log_message)
+        await notify_discord(log_message)
 
     # (2) At this point, the raw_text string may have been unidecoded. It should
     #     be safe within the ASCII range. We move on to filtering out profanity.
     #     Profanity filtering is not yet implemented in this snippet.
 
-    sanitized = raw_text.upper()
+    sanitized = unidecoded_text.upper()
     return sanitized

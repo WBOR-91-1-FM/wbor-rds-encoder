@@ -44,8 +44,8 @@ async def on_message(
             logger.debug("Extracted track info: `%s` - `%s`", artist, title)
 
             # (1) Sanitize (unidecode, filter profanity, truncate, uppercase)
-            sanitized_artist = sanitize_text(artist)
-            sanitized_title = sanitize_text(title)
+            sanitized_artist = await sanitize_text(artist)
+            sanitized_title = await sanitize_text(title)
             logger.debug(
                 "Returned sanitized track info: `%s` - `%s`",
                 sanitized_artist,
@@ -67,6 +67,7 @@ async def on_message(
             title_in_truncated = sanitized_title in truncated_text
 
             # Only tag fields that fully fit TODO: first n characters that fit
+            # Instead of empty tag
             rt_plus_artist = sanitized_artist if artist_in_truncated else ""
             rt_plus_title = sanitized_title if title_in_truncated else ""
 
