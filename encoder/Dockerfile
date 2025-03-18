@@ -8,6 +8,9 @@ WORKDIR /app
 # Install curl and clean up
 RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 
+# Download the words.json file from the GitHub repo
+RUN curl -L https://raw.githubusercontent.com/zacanger/profane-words/master/words.json -o /app/utils/words.json
+
 COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 

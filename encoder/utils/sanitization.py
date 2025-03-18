@@ -6,6 +6,7 @@ import re
 from unidecode import unidecode
 from utils.logging import configure_logging
 from utils.discord import send_webhook as notify_discord
+from utils.profane_words import filter_profane_words
 
 logger = configure_logging(__name__)
 
@@ -44,6 +45,7 @@ async def sanitize_text(raw_text: str) -> str:
     # (2) At this point, the raw_text string may have been unidecoded. It should
     #     be safe within the ASCII range. We move on to filtering out profanity.
     #     Profanity filtering is not yet implemented in this snippet.
+    filtered_text = filter_profane_words(unidecoded_text)
 
-    sanitized = unidecoded_text.upper()
+    sanitized = filtered_text.upper()
     return sanitized
