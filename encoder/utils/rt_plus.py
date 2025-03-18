@@ -91,7 +91,7 @@ def build_rt_plus_tag_command(
 
     # The third to last value has a unique bound of 31, so we need to check
     # if it exceeds this value and if so, set to 31.
-    if payload_parts[-1].split(",")[2] > 31:
+    if int(payload_parts[-1].split(",")[2]) > 31:
         payload_parts[-1] = ",".join(
             # Keep the first two values, set the third to 31
             payload_parts[-1].split(",")[:2]
