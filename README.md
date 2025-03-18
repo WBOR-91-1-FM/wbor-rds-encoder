@@ -181,6 +181,16 @@ DOCKER_TOOL=podman make
   - [Secondary source listing RDS RT+ Codes](https://pira.cz/rds/rtpclass.pdf)
 - [Inspo for RT+ syntax](https://www.thimeo.com/documentation/fm_signal_settings.html)
 
+## Known Limitations
+
+Overall, unidecoding is a very imperfect science. It will not always yield a human-readable result, and it may not always be the most accurate representation of the original text. This is especially true for languages that are not based on the Latin alphabet. Take, for instance:
+
+![example](docs/crazy-unidecode.png)
+
+## Future Work
+
+Use an LLM for profanity filtering and unidecoding. This would allow for more accurate translations and profanity filtering. This would also allow for more accurate translations of non-Latin characters. Still probably not perfect, but likely better than what we have now in terms of catching edge cases or combinations that aren't accounted for.
+
 ## Contributing
 
 Contributions are welcome! Please open an issue or pull request if you have any suggestions or improvements. It is our hope that more stations feel empowered to use RDS to bring their broadcasts into the modern era of radio tech.
