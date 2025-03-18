@@ -9,6 +9,9 @@ Responsible for dynamically updating the RDS (Radio Data System) [RT (RadioText)
 ![showcase](docs/example.jpg)
 
 > [!NOTE]
+> This does not take into account promotional station IDs or other messages that may be displayed on the RDS. This is designed to be a simple, plug-and-play solution for stations that want to display the currently playing track information on their RDS-enabled receivers. More advanced content cycles (with scheduling) could likely be implemented with some modification as a fork.
+
+> [!NOTE]
 > **This app is likely not suitable for transmitter networks** (stations who broadcast from more than one location). [UECP](https://www.rds.org.uk/2010/UECP.htm) is better designed for this, but not implemented in this app due to our station's single-transmitter usecase. From preliminary research, there are no features we "lose out on" (in our use) by choosing the SmartGen's ASCII communicational protocol. This is compounded by the fact that few reputable/battle-tested UECP libraries exist (that I could find).
 
 ## Features
