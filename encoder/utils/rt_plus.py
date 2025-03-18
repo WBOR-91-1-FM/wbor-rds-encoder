@@ -1,5 +1,30 @@
 """
 Functions to build the RT+TAG payload string for the SmartGen.
+
+RT+ requires specifying the offsets, lengths, and content type codes for each
+tagged item. The format is:
+
+    <content_type_1>,
+    <start_pos_1>,
+    <length_1>,
+    <content_type_2>,
+    <start_pos_2>,
+    <length_2>,
+    <item_running_bit>,
+    <timeout>
+
+The accepted values for each field is as follows:
+(00-63, 00-63, 00-63, 00-63, 00-63, 00-31, 0-1, 0-255).
+
+
+NOTE: Only two items can be tagged at a time, so no more than two pairs of
+content_type, start_pos, and length can be specified at once.
+
+Timeout values: 0=NO TIMEOUT, 1-255 timeout in minutes
+
+`item_running_bit`: shall be set to "1" if an item is running.
+NOTE: The Item Toggle bit can't be set manually, since it's toggled
+automatically each time the RT+TAG command is issued.
 """
 
 from utils.logging import configure_logging
@@ -14,53 +39,50 @@ def build_rt_plus_tag_command(
     """
     Build the RT+TAG payload string for the 'artist - title' text.
 
-    RT+ requires specifying the offsets, lengths, and content type codes
-    for each tagged item. The format is:
-
-        <content_type_1>,
-        <start_pos_1>,
-        <length_1>,
-        <content_type_2>,
-        <start_pos_2>,
-        <length_2>,
-        <item_running_bit>,
-        <timeout>
-
-    The accepted values for each field is as follows:
-    (00-63, 00-63, 00-63, 00-63, 00-63, 00-31, 0-1, 0-255).
-
-    Timeout values: 0=NO TIMEOUT, 1-255 timeout in minutes
-
-    NOTE: The Item Toggle bit can't be set manually, since it's toggled each time the RT+TAG
-    command is issued.
-
-    Return a string to pass as the 'RT+TAG=' value on the SmartGen.
+    Returns a string to pass as the `RT+TAG=` value on the SmartGen.
     """
-    logger.debug("Building RT+TAG payload for `%s` - `%s`", artist, title)
+    logger.debug("Building `RT+TAG` payload")
+
+    # Handle missing artist or title
+    if not artist:
+        logger.warning("No artist provided")
+        artist = "NO ARTIST"
+    if not title:
+        logger.warning("No title provided")
+        title = "NO TITLE"
+
+    # Set to one since we will never send a command to indicate that the
+    # item is not running.
     running_bit = 1
 
     # Provided a duration in seconds, calculate the number of minutes
-    # If the duration is 0, the resulting timeout will be 0 (no timeout), meaning
-    # the text will remain on the display indefinitely.
-    duration_minutes = duration // 60
-    timeout = duration_minutes
+    # If the duration is 0, the resulting timeout will be 0 (no timeout),
+    # meaning the text will remain on the display indefinitely.
+    timeout = duration // 60  # Convert seconds to minutes
 
-    # Find where the artist substring starts
-    # We assume the text is "ARTIST - TITLE".
-    # So artist starts at index 0, with length = len(artist).
-    start_artist = full_text.find(artist)
-    len_artist = len(artist)
+    payload_parts = []
 
-    # Find where the title substring starts
-    # We expect that " - " is between them, so the title starts after that.
-    start_title = full_text.find(title)
-    len_title = len(title)
+    # Find positions for artist and title in full_text
+    if artist != "NO ARTIST":
+        start_artist = full_text.find(artist)
+        if start_artist != -1:
+            payload_parts.append(f"{ARTIST_TAG},{start_artist},{len(artist)}")
+        else:
+            logger.warning("Artist not found in `full_text`: `%s`", artist)
 
-    # Build the payload according to the expected format
-    rt_plus_payload = (
-        f"{ARTIST_TAG},{start_artist},{len_artist},"
-        f"{TITLE_TAG},{start_title},{len_title},{running_bit},{timeout}"
-    )
-    logger.debug("RT+TAG payload: `%s`", rt_plus_payload)
+    if title != "NO TITLE":
+        start_title = full_text.find(title)
+        if start_title != -1:
+            payload_parts.append(f"{TITLE_TAG},{start_title},{len(title)}")
+        else:
+            logger.warning("Title not found in `full_text`: `%s`", title)
 
+    # Construct final payload
+    if not payload_parts:
+        logger.error("No valid artist or title found in `full_text`")
+        return ""
+
+    rt_plus_payload = ",".join(payload_parts + [str(running_bit), str(timeout)])
+
+    logger.debug("Final `RT+TAG` payload: `%s`", rt_plus_payload)
     return rt_plus_payload

@@ -105,9 +105,7 @@ For example, if this app is configured to send data to port `1024`, any attempt 
 ## TODO
 
 - [ ] Non-ASCII character replacement library? Or just omit sending title all together?
-  - [ ] <https://stackoverflow.com/questions/3194516/replace-special-characters-with-ascii-equivalent>
-  - [ ] <https://www.dcode.fr/special-characters>
-  - [ ] <https://docs.asciidoctor.org/asciidoc/latest/subs/replacements/>
+  - [ ] <https://pypi.org/project/Unidecode/>
   - [ ] <https://github.com/zacanger/profane-words>
 - [ ] Check: if disallowed characters: `$`, `^`, `` ` `` (backtick).
 
