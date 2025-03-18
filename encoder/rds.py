@@ -1,7 +1,7 @@
 """
 This module provides functionality to consume song metadata from a RabbitMQ queue
 and transmit it to a SmartGen Mini RDS encoder for real-time updates of Radio Data
-System (RDS) & RDS+ text. It manages a persistent TCP socket connection to the 
+System (RDS) & RDS+ text. It manages a persistent TCP socket connection to the
 encoder, automatically reconnecting on failures to maintain a reliable link.
 
 Key components and responsibilities include:
@@ -23,7 +23,7 @@ Key components and responsibilities include:
     - Processes each incoming message using the `on_message` coroutine, extracting
         relevant fields (like title and artist).
     - Sanitizes and formats the text for broadcast, ensuring it conforms to the
-        SmartGen Mini's requirements (e.g., length, character set), and profanity 
+        SmartGen Mini's requirements (e.g., length, character set), and profanity
         filtering.
     - Sends commands to the RDS encoder using `SmartGenConnectionManager`.
     - Handles error scenarios gracefully, logging or requeueing messages as necessary.
@@ -39,6 +39,8 @@ configure the module correctly. Missing or invalid variables result in an
 EnvironmentError at startup.
 """
 
+import sys
+import signal
 import asyncio
 import logging
 
@@ -63,17 +65,27 @@ async def main():
     await smartgen_mgr.start()
 
     connection = await consume_rabbitmq(smartgen_mgr)
+    shutdown_event = asyncio.Event()
 
-    try:
-        while True:
-            await asyncio.sleep(1)
-    except KeyboardInterrupt:
-        pass
-    finally:
-        logger.info("Shutting down...")
-        await smartgen_mgr.stop()
-        await connection.close()
+    def _signal_handler():
+        logger.info("Received shutdown signal.")
+        shutdown_event.set()
+
+    loop = asyncio.get_running_loop()
+    loop.add_signal_handler(signal.SIGTERM, _signal_handler)
+    loop.add_signal_handler(signal.SIGINT, _signal_handler)
+
+    # Wait until shutdown is triggered.
+    await shutdown_event.wait()
+
+    logger.info("Shutting down gracefully...")
+    await smartgen_mgr.stop()
+    await connection.close()
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except Exception:
+        logger.exception("Application encountered an error and will exit.")
+        sys.exit(1)
