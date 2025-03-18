@@ -34,6 +34,6 @@ def decode_rt_plus(rt_plus_payload: str, text: str) -> dict:
     title_start, title_length = payloads[TITLE_TAG]
 
     return {
-        "artist": text[artist_start : artist_start + artist_length],
-        "title": text[title_start : title_start + title_length],
+        "artist": text[artist_start : artist_start + artist_length] or "NO ARTIST",
+        "title": text[title_start : title_start + title_length] or "NO TITLE",
     }
