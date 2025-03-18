@@ -1,6 +1,6 @@
 """
 Module for sending status messages to Discord using webhooks.
-https://pypi.org/project/discord-webhook/#description
+https://github.com/lovvskillz/python-discord-webhook
 """
 
 from discord_webhook import AsyncDiscordWebhook
