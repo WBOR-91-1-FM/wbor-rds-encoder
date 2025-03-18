@@ -3,4 +3,4 @@ python-dotenv
 colorlog
 pytz
 unidecode
-discord-webhook
+discord-webhook[async]
