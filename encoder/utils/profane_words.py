@@ -1,5 +1,9 @@
 """
 Load the `words.json` file and filter out profane words from the input text.
+
+TODO: This is expensive since it is loading the `words.json` file for every
+        message. Consider loading the file once and caching the profane words.
+        This will reduce the overhead of reading the file for every message.
 """
 
 import json
@@ -26,11 +30,12 @@ def filter_profane_words(text: str) -> str:
         logger.error("I/O error occurred while reading words.json: %s", e)
         return text
 
-    logger.debug("Loaded profane words successfully.")
-
     for word in profane_words:
         # Match the full word using word boundaries
         pattern = r"\b" + re.escape(word) + r"\b"
+
+        # Lowercase the text and the word for case-insensitive matching
+        text = text.lower()
         if re.search(pattern, text):
             logger.info("Replacing profane word: %s", word)
         text = re.sub(pattern, lambda m: "*" * len(m.group(0)), text)
