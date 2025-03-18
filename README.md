@@ -25,7 +25,10 @@ Responsible for dynamically updating the RDS (Radio Data System) [RT (RadioText)
 - **Parallel RDS Preview Publishing**:
   - Publishes processed text to a RabbitMQ exchange for consumption by a downstream preview module. For example, a web page or LED sign (e.g. BetaBrite) that reflects what is *currently being shown* by the RDS encoder.
 - **Discord Logging**: In situations where text is unidecoded or profane words are censored, the original and processed text is logged to a Discord channel (defined in the `.env`) for monitoring and debugging purposes.
-  
+
+> [!WARNING]
+> **DO NOT RELY ON THIS PROGRAM WHEN ACCURATE PROFANITY FILTERING IS CRUCIAL**. The profanity filter is not perfect and may not catch all instances of profanity. It is recommended to use a more robust profanity filter if this is a concern.
+
 ## Message Formatting
 
 ### SmartGen ASCII Syntax Rules (in brief)
@@ -156,6 +159,18 @@ For example, if this app is configured to send data to port `1024`, any attempt 
 
     ```bash
     docker compose down
+
+Alternatively, you can use the provided `Makefile` to build and run the containers:
+
+```bash
+make
+```
+
+Or, if you're using in a Podman environment:
+
+```bash
+DOCKER_TOOL=podman make
+```
 
 ## Notes
 

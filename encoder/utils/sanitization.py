@@ -47,7 +47,7 @@ async def sanitize_text(raw_text: str) -> str:
     # (2) At this point, the raw_text string may have been unidecoded. It should
     #     be safe within the ASCII range. We move on to filtering out profanity.
     #     Profanity filtering is not yet implemented in this snippet.
-    filtered_text = filter_profane_words(unidecoded_text)
+    filtered_text = await filter_profane_words(unidecoded_text)
 
     sanitized = filtered_text.upper()
     return sanitized
