@@ -23,11 +23,15 @@ def decode_rt_plus(rt_plus_payload: str, text: str) -> dict:
     except (ValueError, IndexError) as exc:
         raise ValueError("Invalid RT+ payload: numeric conversion failed") from exc
 
-    try:
-        artist_start, artist_length = payloads[ARTIST_TAG]
-        title_start, title_length = payloads[TITLE_TAG]
-    except KeyError as exc:
-        raise ValueError("Invalid RT+ payload: missing required tags") from exc
+    # Recognize that there may be a tag missing (in the case of a truncated
+    # TEXT value), and handle it accordingly.
+    if ARTIST_TAG not in payloads:
+        payloads[ARTIST_TAG] = (0, 0)
+    if TITLE_TAG not in payloads:
+        payloads[TITLE_TAG] = (0, 0)
+
+    artist_start, artist_length = payloads[ARTIST_TAG]
+    title_start, title_length = payloads[TITLE_TAG]
 
     return {
         "artist": text[artist_start : artist_start + artist_length],
