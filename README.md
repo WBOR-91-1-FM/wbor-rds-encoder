@@ -138,6 +138,8 @@ For example, if this app is configured to send data to port `1024`, any attempt 
 
 ## Installation / Usage
 
+### Production
+
 1. Clone the repository:
 
 2. In `encoder/`, copy the `.env.sample` file to `.env` and fill in the necessary values:
@@ -146,7 +148,7 @@ For example, if this app is configured to send data to port `1024`, any attempt 
    cp .env.sample .env
    ```
 
-3. Build the Docker containers:
+3. Build the Docker container:
 
    ```bash
    docker compose up -d --build
@@ -158,12 +160,12 @@ For example, if this app is configured to send data to port `1024`, any attempt 
     docker compose logs -f
     ```
 
-5. To stop the containers:
+5. To stop the container:
 
     ```bash
     docker compose down
 
-Alternatively, you can use the provided `Makefile` to build and run the containers:
+Alternatively, you can use the provided `Makefile` to build and run the container:
 
 ```bash
 make
@@ -174,6 +176,14 @@ Or, if you're using in a Podman environment:
 ```bash
 DOCKER_TOOL=podman make
 ```
+
+### Development
+
+```bash
+docker compose --profile development up -d
+```
+
+Starts encoder, dummy_smartgen, and rabbitmq.
 
 ## Notes
 

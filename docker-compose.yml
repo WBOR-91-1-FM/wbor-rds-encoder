@@ -8,9 +8,6 @@ services:
       - ./encoder/.env
     volumes:
       - ./encoder/logs:/app/logs
-    depends_on:
-      - dummy_smartgen
-      - rabbitmq
     networks:
       - wbor-network
 
@@ -23,6 +20,8 @@ services:
       - ./dummy-smartgen/logs:/app/logs
     networks:
       - wbor-network
+    profiles:
+      - development
 
   rabbitmq:
     image: rabbitmq:3.11-management
@@ -35,6 +34,8 @@ services:
       - "15672:15672" # Management UI
     networks:
       - wbor-network
+    profiles:
+      - development
 
 networks:
   wbor-network:

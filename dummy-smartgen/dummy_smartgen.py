@@ -3,26 +3,45 @@ Simple dummy server to simulate a SmartGen device for testing purposes.
 """
 
 import socket
+import signal
+import sys
 
 HOST = "0.0.0.0"  # Listen on all interfaces
 PORT = 5000
 
+# Global server socket
+server_socket = None
+
+
+def handle_signal(signum, frame):
+    """Gracefully shuts down the server on SIGINT or SIGTERM."""
+    print("\nShutting down server...")
+    if server_socket:
+        server_socket.close()
+    sys.exit(0)
+
+
+# Register signal handlers
+signal.signal(signal.SIGINT, handle_signal)
+signal.signal(signal.SIGTERM, handle_signal)
+
 
 def start_server():
     """
-    Makes the server listen for incoming connections and echo back received messages.
+    Starts a TCP server that listens for incoming connections and echoes back
+    received messages.
 
-    The server listens on all interfaces on port 5137. It accepts incoming connections
-    and echoes back the received messages with an "OK" response.
-
-    The server will run indefinitely until interrupted.
+    The server runs indefinitely until interrupted (SIGINT or SIGTERM).
     """
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server_socket:
-        server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        server_socket.bind((HOST, PORT))
-        server_socket.listen(5)
-        print(f"Dummy SmartGen server listening on {HOST}:{PORT}")
+    global server_socket
+    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    server_socket.bind((HOST, PORT))
+    server_socket.listen(5)
 
+    print(f"Dummy SmartGen server listening on {HOST}:{PORT}")
+
+    try:
         while True:
             conn, addr = server_socket.accept()
             print(f"Connection received from {addr}")
@@ -37,6 +56,13 @@ def start_server():
                     # Echo the received command with an "OK" response (always)
                     response = "OK"
                     conn.sendall(response.encode("ascii"))
+
+    except KeyboardInterrupt:
+        handle_signal(signal.SIGINT, None)
+
+    finally:
+        server_socket.close()
+        print("Server shut down cleanly.")
 
 
 if __name__ == "__main__":
