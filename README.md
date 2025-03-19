@@ -185,6 +185,10 @@ docker compose --profile development up -d
 
 Starts encoder, dummy_smartgen, and rabbitmq.
 
+The `development` profile is used to start the dummy SmartGen and RabbitMQ services for testing purposes. The encoder service should be set to connect to the dummy SmartGen instead of the real one.
+
+For Podman users, compose profiles are not supported. Each service will be started regardless of the profile specified.
+
 ## Notes
 
 - Each RT+ packed only supports two codes/tags
